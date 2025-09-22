@@ -8,7 +8,7 @@ Tarati is an abstract strategy board game by George Spencer Brown.
 * Task list
 ** Edit the main page to display a tic-tac-toe grid (no state yet)
 :LOGBOOK:
-CLOCK: [2025-09-22 Mon 11:39]
+CLOCK: [2025-09-22 Mon 11:39]--[2025-09-22 Mon 12:04] =>  0:25
 :END:
 It’s OK if it looks ugly!
 
@@ -17,5 +17,32 @@ The gameplan here is to simply show an SVG.
 - [X] Display the SVG
 
 *** Learn how to Dynamic SVG
+:LOGBOOK:
+CLOCK: [2025-09-22 Mon 12:26]
+:END:
 
 [[https://dev.to/mondal10/dynamic-svg-component-in-vite-react-ts-3pih][source]]
+
+We are going to use the canvas HTML element.
+**** Learn Canvas Element
+https://medium.com/@pdx.lucasm/canvas-with-react-js-32e133c05258
+
+Using Canvas in react requires a number of React features
+=useRef=
+- The canvas element itself is a DOM node that you need to reference directly
+- You'll be doing imperative drawing operations (like =ctx.drawRect()=)
+- You don't want React to re-render when you draw - you want to control the drawing manually
+
+=useEffect= allows us to perform side effects in function components - in particular, to do something after the component is mounted (first rendered).
+-
+
+
+
+*** Let's import a couple of libraries:
+
+** Questions
+- [X] I'm currently learnining about the HTML canvas element. It's using a feature called =useRef= from React, but I'm not quite understanding it. It's essentially =useState= but for state variables that are /not/ needed for rendering? Then why not just use const?
+  Okay, so useRef is for values that /persist across renders/ but do not trigger renders.
+  Const creates a new variable on every render. It does not persist; it must be re-calculated.
+
+- component mounting :: a component's first render.
