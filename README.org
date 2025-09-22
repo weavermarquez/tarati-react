@@ -18,7 +18,9 @@ The gameplan here is to simply show an SVG.
 
 *** Learn how to Dynamic SVG
 :LOGBOOK:
-CLOCK: [2025-09-22 Mon 12:26]
+CLOCK: [2025-09-22 Mon 14:19]--[2025-09-22 Mon 14:44] =>  0:25
+CLOCK: [2025-09-22 Mon 13:53]--[2025-09-22 Mon 14:18] =>  0:25
+CLOCK: [2025-09-22 Mon 12:26]--[2025-09-22 Mon 12:47] =>  0:21
 :END:
 
 [[https://dev.to/mondal10/dynamic-svg-component-in-vite-react-ts-3pih][source]]
@@ -34,15 +36,112 @@ Using Canvas in react requires a number of React features
 - You don't want React to re-render when you draw - you want to control the drawing manually
 
 =useEffect= allows us to perform side effects in function components - in particular, to do something after the component is mounted (first rendered).
--
+
+To modify a Canvas after mount, we define a callback function that determines the transformation -- or how it looks on each re-render.
+
+- [ ] Perform an animation.
 
 
+** TODO What is Canvas? Why canvas over svg?
+*** gpt-5:
+[CONCEPT]
+High level: SVG is a retained‑mode, vector DOM; Canvas 2D is an immediate‑mode, raster drawing surface. With SVG, you describe shapes declaratively and the browser keeps them around as elements. With canvas, you imperatively paint pixels each frame; nothing is “remembered” by the canvas.
 
-*** Let's import a couple of libraries:
+SVG strengths
+- Resolution‑independent: crisp at any zoom/print.
+- React‑friendly: JSX elements (<svg><path/></svg>), props/state drive the DOM.
+- Built‑in interactivity: per‑element events (click/hover), focusability, ARIA; better accessibility.
+- Styling/debuggability: CSS classes, DevTools inspection, transforms as attributes.
+- Text/layout: high‑quality text, text along paths, easy labels.
+- SSR: can render on the server.
+
+SVG limits
+- Performance: thousands of dynamic elements can bog down (DOM/reflow/repaint).
+- Heavy animations (60fps on many nodes) are hard; complex filters can be costly.
+- Large scenes can increase memory/GC pressure.
+
+Canvas strengths
+- Performance for many dynamic items (particles, sprites, charts with tens of thousands of points).
+- Fine‑grained control: pixel effects, image processing, custom hit‑testing, compositing.
+- Single node (low DOM churn), easy to layer with other overlays.
+- Good for game loops and continuous animation via requestAnimationFrame.
+
+Canvas limits
+- Accessibility: essentially a bitmap; you must implement semantics/hit‑testing yourself.
+- Interactivity: no per‑shape elements; you handle pointer math and state.
+- Text/layout: basic; advanced typography is limited.
+- HiDPI/zoom: you must manage backing store size (devicePixelRatio) for crispness.
+- Harder to inspect; no SSR drawing.
+
+Rule of thumb for your board
+- If the board has tens to a few hundred shapes with hover/click per cell and you want easy labels/tooltips: SVG is simpler and more maintainable.
+- If you expect many animated elements (hundreds+), particle effects, or per‑frame redrawing at 60fps: canvas will scale better.
+- Hybrid works well: render a static board layer to canvas (or an <img>/pattern), and overlay SVG/HTML for interactive pieces/UI. Or pre‑draw board to an offscreen canvas and blit each frame.
+
+Questions to decide:
+- Roughly how many distinct interactive cells/shapes will be on screen?
+- Do you need zoom/pan/print at high fidelity?
+- Will most frames update just a few pieces, or will the whole scene animate continuously?
+- Do you need rich text/labels on many shapes?
+- How important is keyboard/screen‑reader accessibility?
+
+[METHODS]
+Topics/terms to research next:
+- SVG in React: <svg>, <g>, <path>, transform, viewBox, pointer events, ARIA roles.
+- Canvas 2D API: Path2D, stroke/fill styles, transforms, save/restore, compositing, hit‑testing math.
+- HiDPI canvas: setting canvas width/height vs CSS size; devicePixelRatio.
+- OffscreenCanvas and requestAnimationFrame for performance.
+- Libraries: react‑konva (canvas with React), PixiJS (WebGL for heavier scenes), D3 (SVG), GSAP/Framer Motion (animate SVG attributes), Paper.js/Two.js (vector scene graphs).
+
+If you describe your board’s element count, interaction needs, and whether you need zoom/print, I’ll help you choose a direction and outline the first steps.
+
 
 ** Questions
+- [ ] what is window.requestAnimationFrame and window.cancelAnimationFrame?
+- [ ] What is Canvas? Why canvas over svg?
+
+
+
+
+
+- [X] When do I declare types?
+  - Always with the /declaration/ of the variable – and definitely not in asssignments after declarations.
+  - Without let/const/var, JavaScript parses identifier: ... as a labeled statement (used with break/continue). So animationFrameId: number = ... is read as:
+    - a label named animationFrameId
+    - followed by an assignment to a variable named number
+
+
+
+
 - [X] I'm currently learnining about the HTML canvas element. It's using a feature called =useRef= from React, but I'm not quite understanding it. It's essentially =useState= but for state variables that are /not/ needed for rendering? Then why not just use const?
   Okay, so useRef is for values that /persist across renders/ but do not trigger renders.
   Const creates a new variable on every render. It does not persist; it must be re-calculated.
 
 - component mounting :: a component's first render.
+
+- [X] Why are we able to refer to the =.current= property of a var set to =useRef(null)=?
+  - *useRef doesn’t “wrap” a value like useState does*. It returns a stable object with a single property: current. The object identity persists across renders.
+    - Initial call: useRef(initialValue) returns { current: initialValue }.
+    - Mutating ref.current does NOT trigger a re-render.
+
+      THEREFORE:
+      #+begin_example js
+      const canvasRef = useRef(null)
+
+      console.assert(canvasRef != null) // canvasRef is the object returned by useRef; not null.
+      console.assert(canvasRef.current === null) // canvasRef.current is the value we set.
+      #+end_example
+
+- [X] How does .current get the DOM node?
+  - The exact point of the
+  - Render Phase: you pass ref={canvasRef} to <canvas> in the return value.
+  - React Commit phase (after React attaches the DOM):
+    React sets canvasRef.current = the DOM node.
+  - Then useEffect runs /after/ mounting - so reading canvasRef.current there is safe.
+
+- [X] Why =useRef(null)=?
+  - Because the type of the node is not determined yet.
+    - In TypeScript, we type =current= as =HTMLCanvasElement | null=.
+
+- [X] When is =canvasRef.current= null?
+  - before mount, during unmount, if the element is conditionally not rendered, or React StrictMode during dev (mount/unmount cycles).
