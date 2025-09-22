@@ -1,50 +1,109 @@
 import { useState, useEffect, useRef } from 'react'
 import dodecagonBoard from './assets/dodecagon.svg'
-import './App.css'
+//import './App.css'
 
-const Canvas = props => {
-  const canvasRef = useRef(null)
 
-  const draw = (ctx, frameCount) => {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-    ctx.fillStyle ='#000000'
-    ctx.beginPath()
-    ctx.arc(50, 100, 20*Math.sin(frameCount*0.05)**2, 0, 2*Math.PI)
-    ctx.fill()
-  }
+// const anglesFromCentre = (k, arity, phase) => {
+//   const step: float = 2*Math.PI/arity
+//   return [k, phase - k*step]
+// }
 
-  useEffect(() => {
-    const canvas: HTMLCanvasElement | null = canvasRef.current
-    const context: CanvasRenderingContext2D = canvas.getContext('2d')
+// const polarToCartesian = (radius, angle) => {
+//   const x = radius * Math.cos(angle)
+//   const y = radius * Math.sin(angle)
+//   return [x, y]
+// }
 
-    let frameCount = 0
-    let animationFrameId: number
+// const vertices = (k, prefix, radius, angle) => {
+//   const [x, y] = polarToCartesian(radius, angle)
+//   return { id: prefix.concat(k),
+//     x: x,
+//     y: y,
+//   }
+// }
 
-    const render = () => {
-      frameCount++
-      draw(context, frameCount)
-      animationFrameId = window.requestAnimationFrame(render)
-    }
-    render()
+// const polygon = (prefix, arity, radius, phase) => {
+//   const i = [...Array(arity).keys()]
 
-    return () => {
-      window.cancelAnimationFrame(animationFrameId)
-    }
-  }, [draw])
+//   return i.map(k => anglesFromCentre(k, arity, phase))
+//     .map(([k, angle]) => vertices(k, prefix, radius, angle))
+// }
 
-  return <canvas ref={canvasRef} {...props}/>
-}
+// const Node = props => {
+//   return (
+//     <g {...props}>
+//           <line x1="40" x2="60" y1="25" y2="50" />
+//           <line x1="90" x2="20" y1="65" y2="20" />
+//     </g>
+//   )
+// }
+
+
+// const Board = props => {
+//   const RADIUS = 500
+//   const dodecagon = []
+//   // a function that takes in a radius and no. of vertices; list of vertices
+
+//   return (
+//     <g {...props}>
+//           <line x1="40" x2="60" y1="25" y2="50" />
+//           <line x1="90" x2="20" y1="65" y2="20" />
+//     </g>
+//   )
+// }
+
 
 function App() {
-  const [count, setCount] = useState(0)
+  //const [count, setCount] = useState(0)
+
+  const anglesFromCentre = (k, arity, phase) => {
+    const step: float = 2*Math.PI/arity
+    return [k, phase - k*step]
+  }
+
+  const polarToCartesian = (radius, angle) => {
+    const x = radius * Math.cos(angle)
+    const y = radius * Math.sin(angle)
+    return [x, y]
+  }
+
+  const vertices = (k, prefix, radius, angle) => {
+    const [x, y] = polarToCartesian(radius, angle)
+    return { id: prefix.concat(k),
+      x: Math.round(x),
+      y: Math.round(y),
+    }
+  }
+
+  const polygon = (prefix, arity, radius, phase) => {
+    const i = [...Array(arity).keys()]
+
+    return i.map(k => anglesFromCentre(k, arity, phase))
+      .map(([k, angle]) => vertices(k, prefix, radius, angle))
+  }
+
+  const angleOffset = arity => Math.PI/arity
+
+  const offset = 400
+  const dotSize = 15
+  const dodecagon = polygon("C", 12, 200, angleOffset(12))
+  const hexagon = polygon("B", 6, 100, angleOffset(6))
+  const squareA = polygon("D", 4, 30, angleOffset(4))
+  const squareB = polygon("D", 4, 30, 0)
 
   return (
     <>
       <div>
-        { Canvas() }
+        <svg style={{height: 100 + 'em', width: 100 + 'em'}}>
+          {dodecagon.map(({id, x, y}) => <circle cx={offset+x} cy={offset+y} r="15" fill="black" />)}
+          {hexagon.map(({id, x, y}) => <circle cx={offset+x} cy={offset+y} r="15" fill="black" />)}
+          {squareA.map(({id, x, y}) => <circle cx={offset+x} cy={offset+y} r="15" fill="black" />)}
+          <circle cx="40" cy="60" r="25"/>
+        </svg>
       </div>
     </>
   )
 }
 
 export default App
+// export default { App, polygon, anglesFromCentre, polarToCartesian, vertices }
