@@ -11,3 +11,11 @@ Tarati is an abstract strategy board game by George Spencer Brown.
 CLOCK: [2025-09-22 Mon 11:39]
 :END:
 It’s OK if it looks ugly!
+
+The gameplan here is to simply show an SVG.
+- [X] Install tree-sitter grammars
+- [X] Display the SVG
+
+*** Learn how to Dynamic SVG
+
+[[https://dev.to/mondal10/dynamic-svg-component-in-vite-react-ts-3pih][source]]
