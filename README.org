@@ -1,0 +1,5 @@
+#+title: Readme
+
+* Tarati in React
+
+Tarati is an abstract strategy board game by George Spencer Brown.
