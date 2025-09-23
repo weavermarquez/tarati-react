@@ -3,3 +3,245 @@
 * Tarati in React
 
 Tarati is an abstract strategy board game by George Spencer Brown.
+
+
+* Task list
+** Edit the main page to display a tic-tac-toe grid (no state yet)
+:LOGBOOK:
+CLOCK: [2025-09-22 Mon 11:39]--[2025-09-22 Mon 12:04] =>  0:25
+:END:
+It’s OK if it looks ugly!
+
+The gameplan here is to simply show an SVG.
+- [X] Install tree-sitter grammars
+- [X] Display the SVG
+
+*** Learn how to Dynamic SVG
+:LOGBOOK:
+CLOCK: [2025-09-22 Mon 15:33]--[2025-09-22 Mon 15:58] =>  0:25
+CLOCK: [2025-09-22 Mon 14:19]--[2025-09-22 Mon 14:44] =>  0:25
+CLOCK: [2025-09-22 Mon 13:53]--[2025-09-22 Mon 14:18] =>  0:25
+CLOCK: [2025-09-22 Mon 12:26]--[2025-09-22 Mon 12:47] =>  0:21
+:END:
+
+[[https://dev.to/mondal10/dynamic-svg-component-in-vite-react-ts-3pih][source]]
+This source seems to be more about /manipulating/ external static SVGs. Hmm.
+
+We are going to use the canvas HTML element, maybe?
+**** Learn Canvas Element
+https://medium.com/@pdx.lucasm/canvas-with-react-js-32e133c05258
+
+Using Canvas in react requires a number of React features
+=useRef=
+- The canvas element itself is a DOM node that you need to reference directly
+- You'll be doing imperative drawing operations (like =ctx.drawRect()=)
+- You don't want React to re-render when you draw - you want to control the drawing manually
+
+=useEffect= allows us to perform side effects in function components - in particular, to do something after the component is mounted (first rendered).
+
+To modify a Canvas after mount, we define a callback function that determines the transformation -- or how it looks on each re-render.
+
+- [X] Perform an animation.
+**** Return to SVG
+
+
+
+
+** TODO Canvas vs. SVG?
+*** What is Canvas? Why canvas over svg?
+**** gpt-5:
+[CONCEPT]
+High level: SVG is a retained‑mode, vector DOM; Canvas 2D is an immediate‑mode, raster drawing surface. With SVG, you describe shapes declaratively and the browser keeps them around as elements. With canvas, you imperatively paint pixels each frame; nothing is “remembered” by the canvas.
+
+SVG strengths
+- Resolution‑independent: crisp at any zoom/print.
+- React‑friendly: JSX elements (<svg><path/></svg>), props/state drive the DOM.
+- Built‑in interactivity: per‑element events (click/hover), focusability, ARIA; better accessibility.
+- Styling/debuggability: CSS classes, DevTools inspection, transforms as attributes.
+- Text/layout: high‑quality text, text along paths, easy labels.
+- SSR: can render on the server.
+
+SVG limits
+- Performance: thousands of dynamic elements can bog down (DOM/reflow/repaint).
+- Heavy animations (60fps on many nodes) are hard; complex filters can be costly.
+- Large scenes can increase memory/GC pressure.
+
+Canvas strengths
+- Performance for many dynamic items (particles, sprites, charts with tens of thousands of points).
+- Fine‑grained control: pixel effects, image processing, custom hit‑testing, compositing.
+- Single node (low DOM churn), easy to layer with other overlays.
+- Good for game loops and continuous animation via requestAnimationFrame.
+
+Canvas limits
+- Accessibility: essentially a bitmap; you must implement semantics/hit‑testing yourself.
+- Interactivity: no per‑shape elements; you handle pointer math and state.
+- Text/layout: basic; advanced typography is limited.
+- HiDPI/zoom: you must manage backing store size (devicePixelRatio) for crispness.
+- Harder to inspect; no SSR drawing.
+
+Rule of thumb for your board
+- If the board has tens to a few hundred shapes with hover/click per cell and you want easy labels/tooltips: SVG is simpler and more maintainable.
+- If you expect many animated elements (hundreds+), particle effects, or per‑frame redrawing at 60fps: canvas will scale better.
+- Hybrid works well: render a static board layer to canvas (or an <img>/pattern), and overlay SVG/HTML for interactive pieces/UI. Or pre‑draw board to an offscreen canvas and blit each frame.
+
+Questions to decide:
+- Roughly how many distinct interactive cells/shapes will be on screen?
+- Do you need zoom/pan/print at high fidelity?
+- Will most frames update just a few pieces, or will the whole scene animate continuously?
+- Do you need rich text/labels on many shapes?
+- How important is keyboard/screen‑reader accessibility?
+
+[METHODS]
+Topics/terms to research next:
+- SVG in React: <svg>, <g>, <path>, transform, viewBox, pointer events, ARIA roles.
+- Canvas 2D API: Path2D, stroke/fill styles, transforms, save/restore, compositing, hit‑testing math.
+- HiDPI canvas: setting canvas width/height vs CSS size; devicePixelRatio.
+- OffscreenCanvas and requestAnimationFrame for performance.
+- Libraries: react‑konva (canvas with React), PixiJS (WebGL for heavier scenes), D3 (SVG), GSAP/Framer Motion (animate SVG attributes), Paper.js/Two.js (vector scene graphs).
+
+If you describe your board’s element count, interaction needs, and whether you need zoom/print, I’ll help you choose a direction and outline the first steps.
+
+*** Ah -- bleh. Okay, it's a game that's analogous to checkers / othello / go / chess. Abstract simple strategy game with a fairly small board. What do I need to know in order to convert my current little canvas tutorial following code into something that renders svg and animates it?
+**** gpt-5:
+[CONCEPT]
+You’re shifting from an imperative painter (canvas) to a declarative scene (SVG). In React, SVG fits naturally: your state describes “what exists,” and JSX renders it as vector elements.
+
+Key ideas to make this conversion:
+- Scene vs pixels: With SVG you render shapes like <polygon>, <rect>, <circle>, <line>, not pixels. The browser keeps these nodes around and updates them when props/state change.
+- Coordinate system via viewBox: Pick a logical coordinate system (e.g., 0..1000) and set viewBox so everything scales crisply on any screen. CSS width/height controls layout size; geometry uses viewBox units.
+- Geometry as pure functions: Compute your dodecagon vertices (12 angles on a circle), inner squares/circles, and store those points in arrays. React maps arrays to elements. You don’t “draw” per frame; you render shapes from data.
+- Componentization: Build Board, Cell, Piece as components. Board renders the static geometry; Pieces render from game state. Use <g> groups to apply transforms or shared styles.
+- Styling and layers: Use CSS classes for stroke/fill/lineWidth; layer with group order. For hover/highlight, toggle classes based on state.
+- Interactivity “for free”: Each shape can have onClick/onMouseEnter, etc. You no longer do manual hit-testing.
+- Animation options (pick one, keep it simple first):
+  1) CSS transitions: change attributes (e.g., transform, opacity, fill) and let CSS interpolate.
+  2) Declarative animation libs: Framer Motion or react-spring wrap SVG elements for smooth interpolations.
+  3) SMIL (<animate/animateTransform>): supported in modern browsers, but less idiomatic in React codebases.
+  4) JS rAF: last resort; manually update state at 60fps. Use only if you need custom easing or physics.
+- Performance mindset: For a small board (like chess/checkers), SVG is plenty fast. Avoid re-creating big arrays/paths every tick; compute static geometry once (memoize) and only animate attributes that change.
+- Accessibility: SVG elements can be focusable and labeled. This is much easier than canvas; take advantage of it.
+
+Questions for you:
+- What animations do you actually want? Examples: piece move from cell A to B, hover highlight, capture pulse, valid-move hint glow?
+- Do you need drag-and-drop, or are moves click-to-select then click-to-destination?
+- Do you anticipate zoom/pan of the board?
+- Roughly how many cells and pieces maximum on screen?
+
+[METHODS]
+Topics, elements, and attributes to research and use:
+- SVG container: <svg> with viewBox, preserveAspectRatio; size via CSS.
+- Basic shapes: <line>, <rect> (with rx/ry for rounded), <circle>, <ellipse>, <polygon> (points attribute), <path> (d for complex outlines).
+- Grouping and reuse: <g> for grouping and transforms; <defs> + <use> for reusing shapes (e.g., a piece glyph).
+- Transforms: transform="translate(...) rotate(...) scale(...)" on groups or shapes. Center rotations by translating to the center, rotating, translating back (or using transform-box/transform-origin in CSS where supported).
+- Styling: stroke, stroke-width, stroke-linejoin, stroke-linecap, fill, fill-opacity, vector-effect="non-scaling-stroke" (keeps stroke width constant when scaling).
+- Events: onClick, onMouseEnter/Leave, onPointerDown/Move/Up for drag; pointer-events CSS property if needed.
+- React patterns: map arrays of points to elements, stable keys, useMemo for static geometry (board outline), useState/useReducer for game state, useEffect only for time-based animations.
+- Animation approaches:
+  - CSS transitions: transition: transform 200ms ease; then update transform on state change.
+  - Framer Motion: motion.g/motion.circle with animate={{ x, y, scale, opacity }}; layoutId for smooth “shared layout” moves.
+  - react-spring: useSpring to interpolate props to SVG attributes.
+  - Stroke drawing effects: stroke-dasharray + stroke-dashoffset for “draw-in” animations.
+- Geometry math:
+  - Regular polygon: N vertices at angle i * 2π/N (+ optional offset), point = (cx + r cosθ, cy + r sinθ).
+  - Convert cell indices (row, col) to board coordinates; keep a single source of truth for spacing and radii.
+- Accessibility: role="img", aria-label, focusable, tabindex for keyboard interaction; describe pieces and positions for screen readers.
+- Testing and debugging: toggle outline classes, use DevTools to inspect DOM nodes, overlay a temporary grid.
+
+If you outline the exact animations you want for “move”, “capture”, and “hover”, and how big your board is (cells across, radius if dodecagon-based), I’ll help you choose the simplest animation method and sketch the data flow from game state to SVG attributes. If you want minimal code samples for a single concept (e.g., “how to express a polygon’s points” or “how to apply a translate transform”), say “please show me a 1–2 line example for X.”
+
+*** I list out my animation and development requirements.
+**** gpt-5:
+[CONCEPT]
+Short answer:
+- Canvas and CSS: You can style the canvas element (size, border, opacity, transform, filters), but not the pixels you draw inside it. Tailwind works for the element/container only, not the drawn shapes.
+- SVG and CSS: You can style individual shapes with CSS classes (including Tailwind utilities), animate them, and attach events. This fits React well and is better for accessibility.
+
+Given your scale (27 cells, 8 pieces) and your goal of professional accessibility, SVG is the right default:
+- Per-cell interactivity: direct onClick/onPointerDown on each shape, easy hover/highlight classes.
+- Accessibility: focusable shapes, ARIA labels, keyboard navigation (roving tabindex), and a live region for announcements (e.g., “Picked up white pawn at C3”).
+- Animations: use CSS transitions or a small animation lib to translate a piece from A→B, pulse valid moves, and flip on capture. You don’t need a 60fps game loop.
+
+Drag-and-drop/mobile:
+- Use Pointer Events (pointerdown/move/up) for unified mouse/touch/pen handling.
+- Prevent scrolling/zoom while dragging with touch-action: none on the board.
+- For keyboard users, support “select piece” with Enter/Space, move focus to valid targets with arrows or tab, then Enter/Space to drop. Announce via aria-live.
+
+Tailwind specifics:
+- Canvas: Tailwind can size/position the canvas (w-…, h-…, absolute, shadow, filter, opacity, rounded). It cannot change stroke/fill of what’s drawn inside.
+- SVG: Tailwind can style shapes: fill-/ (colors), stroke-/ (colors), stroke-[1|2|…], opacity-*, transition-*, transform utilities, focus-visible ring/outlines. For non-scaling strokes when scaling the viewBox, use an arbitrary property: [vector-effect:non-scaling-stroke].
+
+Trade-offs recap:
+- Canvas: best for high-performance pixel or particle effects; weaker accessibility; manual hit-testing.
+- SVG: best for a small, structured, interactive board; strong accessibility; easier React integration; crisp at any size.
+
+Questions to check your plan
+- Are you comfortable committing to SVG for the board and pieces, with potential to add a canvas or HTML overlay later if needed?
+- For keyboard access, would you prefer a grid-like pattern (arrow keys move focus across cells) or a two-step model (focus piece list, then focus valid destination list)?
+- For the capture “flip,” do you want a true 3D flip (rotateY with CSS on the SVG element) or a simpler 2D flip/pulse that’s more broadly compatible?
+
+[METHODS]
+What to look up and use next:
+- Styling SVG with Tailwind: fill-*, stroke-*, stroke-2, opacity-*, transition, ease-*, duration-*, transform, focus-visible:*, and arbitrary props like [vector-effect:non-scaling-stroke].
+- SVG essentials: <svg viewBox>, <g>, <polygon>, <circle>, <line>, transform, pointer-events.
+- Pointer Events: pointerdown/move/up, setPointerCapture, touch-action.
+- Accessibility references:
+  - WAI-ARIA Authoring Practices: grid pattern (roving tabindex), drag-and-drop pattern (keyboard “grab/move/drop”), and live regions.
+  - SVG accessibility: role="img" or role="graphics-document", title/desc, aria-label on interactive cells/pieces, tabindex.
+- Animation approaches:
+  - CSS transitions for transforms and opacity (simple, robust).
+  - Framer Motion or react-spring if you want more control/easing sequences.
+  - Pulsing hint: CSS keyframes or Tailwind’s animate utilities (e.g., custom animate-pulse for stroke/opacity).
+- React patterns:
+  - useMemo to compute static board geometry once (dodecagon vertices, cell positions).
+  - Map geometry arrays to SVG elements with stable keys.
+  - Single source of truth for selection/drag state; derive classes from it (e.g., isValidTarget → ring/glow class).
+
+If you want, outline your intended focus/keyboard flow and the three animation states (move, flip, glow). I’ll help you refine the UX and map those to concrete SVG attributes and Tailwind classes.
+
+
+** Questions
+- [ ] what is window.requestAnimationFrame and window.cancelAnimationFrame?
+- [ ] What is Canvas? Why canvas over svg?
+  - SVG is a retained‑mode, vector DOM; Canvas 2D is an immediate‑mode, raster drawing surface. With SVG, you describe shapes declaratively and the browser keeps them around as elements. With canvas, you imperatively paint pixels each frame; nothing is “remembered” by the canvas.
+
+- [X] When do I declare types?
+  - Always with the /declaration/ of the variable – and definitely not in asssignments after declarations.
+  - Without let/const/var, JavaScript parses identifier: ... as a labeled statement (used with break/continue). So animationFrameId: number = ... is read as:
+    - a label named animationFrameId
+    - followed by an assignment to a variable named number
+
+
+
+
+- [X] I'm currently learnining about the HTML canvas element. It's using a feature called =useRef= from React, but I'm not quite understanding it. It's essentially =useState= but for state variables that are /not/ needed for rendering? Then why not just use const?
+  Okay, so useRef is for values that /persist across renders/ but do not trigger renders.
+  Const creates a new variable on every render. It does not persist; it must be re-calculated.
+
+- component mounting :: a component's first render.
+
+- [X] Why are we able to refer to the =.current= property of a var set to =useRef(null)=?
+  - *useRef doesn’t “wrap” a value like useState does*. It returns a stable object with a single property: current. The object identity persists across renders.
+    - Initial call: useRef(initialValue) returns { current: initialValue }.
+    - Mutating ref.current does NOT trigger a re-render.
+
+      THEREFORE:
+      #+begin_example js
+      const canvasRef = useRef(null)
+
+      console.assert(canvasRef != null) // canvasRef is the object returned by useRef; not null.
+      console.assert(canvasRef.current === null) // canvasRef.current is the value we set.
+      #+end_example
+
+- [X] How does .current get the DOM node?
+  - The exact point of the
+  - Render Phase: you pass ref={canvasRef} to <canvas> in the return value.
+  - React Commit phase (after React attaches the DOM):
+    React sets canvasRef.current = the DOM node.
+  - Then useEffect runs /after/ mounting - so reading canvasRef.current there is safe.
+
+- [X] Why =useRef(null)=?
+  - Because the type of the node is not determined yet.
+    - In TypeScript, we type =current= as =HTMLCanvasElement | null=.
+
+- [X] When is =canvasRef.current= null?
+  - before mount, during unmount, if the element is conditionally not rendered, or React StrictMode during dev (mount/unmount cycles).
